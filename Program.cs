@@ -2,21 +2,47 @@
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
-Console.WriteLine("Введите путь к папке:");
+Console.WriteLine("Это приложение получает путь к папке и затем получает тип расширения текстовых файлов. После их получение программа собирает все текстовые файлы с полученным расширение (например, \"txt\") внутри указанной папки и всех её под папок и на их основе создает один единый большой текстовый файл \"CombinedText.docx\" на рабочем столе в котором хранится объединенный текст из всех полученных фалов. \nЧтобы продолжить, следуюте указанным действиям: ");
+Console.WriteLine("\nВведите путь к папке: ");
 string? folderPath = Console.ReadLine();
 
-if (!string.IsNullOrEmpty(folderPath) && Directory.Exists(folderPath))
-{
-    string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-    string wordFilePath = Path.Combine(desktopPath, "CombinedScripts.docx");
-    CreateWordDocument(wordFilePath, folderPath);
-    Console.WriteLine($"Файл {wordFilePath} создан успешно.");
-}
-else
-    Console.WriteLine("Указанная папка не существует.");
+if (string.IsNullOrEmpty(folderPath))
+    ThrowTextException();
 
-static void CreateWordDocument(string wordFilePath, string folderPath)
+folderPath = folderPath.Trim('\n', '\t', '\r', ' ');
+if (string.IsNullOrEmpty(folderPath))
+    ThrowTextException();
+
+if (!Directory.Exists(folderPath))
+    throw new Exception("Указанная папка не существует!");
+
+Console.WriteLine("\nВведите расширение текстовых файлов (без точки, просто символы (например: для файла Text.txt ввод должен быть просто txt)): ");
+string? extension = Console.ReadLine();
+
+if (string.IsNullOrEmpty(extension))
+    ThrowTextException();
+
+extension = extension.Trim('\n', '\t', '\r', ' ');
+if (string.IsNullOrEmpty(extension))
+    ThrowTextException();
+
+foreach (var c in extension)
 {
+    if (!char.IsLetterOrDigit(c))
+        ThrowTextException();
+}
+
+string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+string wordFilePath = Path.Combine(desktopPath, "CombinedText.docx");
+CreateWordDocument(wordFilePath, folderPath, extension);
+Console.ForegroundColor = ConsoleColor.Green;
+Console.WriteLine($"Файл {wordFilePath} создан успешно.");
+Console.ForegroundColor = ConsoleColor.White;
+
+static void ThrowTextException() => throw new Exception("Полученный текст пуст либо некорректен!"); 
+static void CreateWordDocument(string wordFilePath, string folderPath, string extension)
+{
+    Console.WriteLine("\nНачато создание файла. Если файлов в папке много, то на это может потребоваться некоторое время. Ожидайте...");
     using (WordprocessingDocument wordDocument = WordprocessingDocument.Create(wordFilePath, WordprocessingDocumentType.Document))
     {
         MainDocumentPart mainPart = wordDocument.AddMainDocumentPart();
@@ -26,18 +52,18 @@ static void CreateWordDocument(string wordFilePath, string folderPath)
         SectionProperties sectionProperties = new SectionProperties();
         PageMargin pageMargin = new PageMargin()
         {
-            Top    = 0,
-            Right  = (UInt32Value)0U,
+            Top = 0,
+            Right = (UInt32Value)0U,
             Bottom = 0,
-            Left   = (UInt32Value)0U,
+            Left = (UInt32Value)0U,
             Header = (UInt32Value)0U,
             Footer = (UInt32Value)0U,
             Gutter = (UInt32Value)0U
-        }; 
+        };
         sectionProperties.Append(pageMargin);
         body.Append(sectionProperties);
 
-        var csFiles = Directory.GetFiles(folderPath, "*.cs", SearchOption.AllDirectories);
+        var csFiles = Directory.GetFiles(folderPath, $"*.{extension}", SearchOption.AllDirectories);
         foreach (var file in csFiles)
         {
             string fileContent = File.ReadAllText(file);
@@ -62,7 +88,7 @@ static void AppendFormattedText(Body body, string text)
 
         RunFonts runFonts = new RunFonts { Ascii = "Cascadia Mono SemiLight" };
         FontSize fontSize = new FontSize() { Val = "16" };
-        runProperties.Append(runFonts); 
+        runProperties.Append(runFonts);
         runProperties.Append(fontSize);
 
         Text t = new Text(line) { Space = SpaceProcessingModeValues.Preserve };
