@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml;
+﻿using System.Xml;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 
@@ -83,6 +84,8 @@ static void AppendFormattedText(Body body, string text)
     var lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
     foreach (var line in lines)
     {
+        string sanitizedLine = SanitizeText(line);
+        if (string.IsNullOrWhiteSpace(sanitizedLine)) continue;
         Run run = new Run();
         RunProperties runProperties = new RunProperties();
 
@@ -98,4 +101,11 @@ static void AppendFormattedText(Body body, string text)
         Paragraph para = new Paragraph(run);
         body.AppendChild(para);
     }
+}
+static string SanitizeText(string input)
+{
+    if (string.IsNullOrEmpty(input))
+        return string.Empty;
+
+    return new string(input.Where(c => XmlConvert.IsXmlChar(c)).ToArray());
 }
